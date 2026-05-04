@@ -3,7 +3,7 @@ export const pageSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    pageNumber: { type: "integer", minimum: 1, maximum: 5 },
+    pageNumber: { type: "number" },
     text: { type: "string" },
     imagePrompt: { type: "string" },
   },
@@ -20,8 +20,6 @@ export const storySchema = {
       pages: {
         type: "array",
         items: pageSchema,
-        minItems: 5,
-        maxItems: 5,
       },
     },
     required: ["pages"],
