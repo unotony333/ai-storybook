@@ -4,9 +4,11 @@ import { regeneratePage } from "@/app/lib/openai";
 import {
   MAX_OUTLINE_LENGTH,
   PAGE_COUNT,
-  PromptLang,
-  StoryPage,
+  type PromptLang,
+  type StoryPage,
 } from "@/app/lib/types";
+import { type ProviderSettings } from "@/app/lib/provider";
+import { getDefaultProvider } from "@/app/lib/provider-server";
 
 interface Body {
   outline?: string;
@@ -14,6 +16,7 @@ interface Body {
   pageNumber?: number;
   otherPages?: StoryPage[];
   userHint?: string;
+  provider?: ProviderSettings;
 }
 
 export async function POST(req: NextRequest) {
@@ -56,8 +59,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (body.provider?.isLocal) {
+    return NextResponse.json(
+      { error: "本地模型請從前端直連" },
+      { status: 400 },
+    );
+  }
+
+  const provider = body.provider ?? getDefaultProvider();
+  if (!provider) {
+    return NextResponse.json(
+      { error: "請點右上角設定 AI 供應商" },
+      { status: 503 },
+    );
+  }
+
   try {
     const page = await regeneratePage({
+      provider,
       outline,
       lang: promptLang,
       pageNumber,
