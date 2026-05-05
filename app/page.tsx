@@ -78,9 +78,29 @@ export default function Home() {
               initialLang={initialLang}
             />
           )}
+          {isLoading && <GenerateSkeleton />}
         </div>
       </main>
     </>
+  );
+}
+
+function GenerateSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" aria-live="polite">
+      <p className="text-sm text-zinc-500">正在生成 5 頁繪本，這通常需要 5–15 秒…</p>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <div
+          key={n}
+          className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 animate-pulse"
+        >
+          <div className="h-4 w-20 rounded bg-zinc-200 dark:bg-zinc-800 mb-4" />
+          <div className="h-3 w-full rounded bg-zinc-200 dark:bg-zinc-800 mb-2" />
+          <div className="h-3 w-5/6 rounded bg-zinc-200 dark:bg-zinc-800 mb-4" />
+          <div className="h-3 w-2/3 rounded bg-zinc-200 dark:bg-zinc-800" />
+        </div>
+      ))}
+    </div>
   );
 }
 
