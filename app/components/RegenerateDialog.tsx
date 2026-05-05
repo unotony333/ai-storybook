@@ -42,7 +42,7 @@ export function RegenerateDialog({
           e.preventDefault();
           onConfirm(hint.trim() || undefined);
         }}
-        className="flex flex-col gap-4 p-6 bg-white dark:bg-zinc-900"
+        className="flex flex-col gap-4 p-6 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50"
       >
         <h2 className="text-lg font-semibold">
           重新生成第 {pageNumber} 頁

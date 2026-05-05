@@ -90,7 +90,7 @@ export function SettingsDialog({
     >
       <form
         onSubmit={handleSave}
-        className="flex flex-col gap-4 p-6 bg-white dark:bg-zinc-900 max-h-[85vh] overflow-y-auto"
+        className="flex flex-col gap-4 p-6 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 max-h-[85vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">AI 設定</h2>
