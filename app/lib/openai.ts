@@ -1,17 +1,8 @@
 // app/lib/openai.ts
-import OpenAI from "openai";
+import { ProviderSettings } from "./provider";
 import { PromptLang, StoryPage } from "./types";
+import { callAI } from "./ai-call";
 import { storySchema, singlePageSchema } from "./openai-schema";
-
-const MODEL = "gpt-4o-mini";
-
-function client() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY 未設定");
-  }
-  return new OpenAI({ apiKey });
-}
 
 function langLabel(lang: PromptLang): string {
   return lang === "zh" ? "繁體中文" : "English";
@@ -24,27 +15,30 @@ const SYSTEM_BASE = (lang: PromptLang) => `你是兒童繪本創作助手。根�
 
 整體風格：溫暖、富想像力，5 頁構成完整的「起承轉合 + 收尾」。`;
 
+const STORY_SCHEMA_DESC =
+  '回傳 JSON：{ "pages": [{ "pageNumber": 1..5, "text": "...", "imagePrompt": "..." }, ...] }，pages 必須正好 5 個元素，pageNumber 依序 1 到 5。';
+
+const PAGE_SCHEMA_DESC =
+  '回傳 JSON：{ "page": { "pageNumber": <該頁頁碼>, "text": "...", "imagePrompt": "..." } }';
+
 export async function generateStory(
+  provider: ProviderSettings,
   outline: string,
   lang: PromptLang,
 ): Promise<StoryPage[]> {
-  const openai = client();
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: "system", content: SYSTEM_BASE(lang) },
-      { role: "user", content: outline },
-    ],
-    response_format: { type: "json_schema", json_schema: storySchema },
+  const result = await callAI<{ pages: StoryPage[] }>({
+    provider,
+    systemPrompt: SYSTEM_BASE(lang),
+    userMessage: outline,
+    schemaName: storySchema.name,
+    schema: storySchema.schema,
+    schemaDescription: STORY_SCHEMA_DESC,
   });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("OpenAI 回傳空內容");
-  const parsed = JSON.parse(raw) as { pages: StoryPage[] };
-  return parsed.pages;
+  return result.pages;
 }
 
 export interface RegenerateArgs {
+  provider: ProviderSettings;
   outline: string;
   lang: PromptLang;
   pageNumber: number;
@@ -53,8 +47,7 @@ export interface RegenerateArgs {
 }
 
 export async function regeneratePage(args: RegenerateArgs): Promise<StoryPage> {
-  const { outline, lang, pageNumber, otherPages, userHint } = args;
-  const openai = client();
+  const { provider, outline, lang, pageNumber, otherPages, userHint } = args;
 
   const system = `${SYSTEM_BASE(lang)}
 
@@ -70,20 +63,17 @@ export async function regeneratePage(args: RegenerateArgs): Promise<StoryPage> {
     userHint: userHint ?? null,
   });
 
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: userMessage },
-    ],
-    response_format: { type: "json_schema", json_schema: singlePageSchema },
+  const result = await callAI<{ page: StoryPage }>({
+    provider,
+    systemPrompt: system,
+    userMessage,
+    schemaName: singlePageSchema.name,
+    schema: singlePageSchema.schema,
+    schemaDescription: PAGE_SCHEMA_DESC,
   });
 
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("OpenAI 回傳空內容");
-  const parsed = JSON.parse(raw) as { page: StoryPage };
-  if (parsed.page.pageNumber !== pageNumber) {
-    parsed.page.pageNumber = pageNumber;
+  if (result.page.pageNumber !== pageNumber) {
+    result.page.pageNumber = pageNumber;
   }
-  return parsed.page;
+  return result.page;
 }
