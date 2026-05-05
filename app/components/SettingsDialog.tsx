@@ -2,6 +2,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import OpenAI from "openai";
+import { friendlyAIError } from "@/app/lib/ai-call";
 import {
   PRESETS,
   ProviderSettings,
@@ -9,6 +11,12 @@ import {
   emptyCustomSettings,
   presetToSettings,
 } from "@/app/lib/provider";
+
+type TestState =
+  | { status: "idle" }
+  | { status: "testing" }
+  | { status: "ok" }
+  | { status: "error"; message: string };
 
 export interface SettingsDialogProps {
   open: boolean;
@@ -33,6 +41,7 @@ export function SettingsDialog({
   );
   const [headersError, setHeadersError] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [test, setTest] = useState<TestState>({ status: "idle" });
 
   useEffect(() => {
     const dlg = ref.current;
@@ -43,11 +52,64 @@ export function SettingsDialog({
       setHeadersError(null);
       setShowKey(false);
       setAdvancedOpen(false);
+      setTest({ status: "idle" });
       dlg.showModal();
     } else if (!open && dlg.open) {
       dlg.close();
     }
   }, [open, initial]);
+
+  function buildSettingsForCall(): ProviderSettings | null {
+    let headers: Record<string, string> | undefined;
+    if (headersText.trim()) {
+      try {
+        const parsed = JSON.parse(headersText);
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+          throw new Error("not an object");
+        }
+        headers = parsed as Record<string, string>;
+      } catch {
+        setHeadersError("Headers 必須是合法 JSON 物件，例如 {\"X-Foo\": \"bar\"}");
+        return null;
+      }
+    }
+    setHeadersError(null);
+    return { ...s, headers };
+  }
+
+  async function handleTest() {
+    const settings = buildSettingsForCall();
+    if (!settings) return;
+    setTest({ status: "testing" });
+    try {
+      if (settings.isLocal) {
+        const client = new OpenAI({
+          baseURL: settings.baseURL,
+          apiKey: settings.apiKey || "no-key",
+          defaultHeaders: settings.headers,
+          dangerouslyAllowBrowser: true,
+        });
+        await client.models.list();
+      } else {
+        const res = await fetch("/api/test-provider", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider: settings }),
+        });
+        const data: { ok?: boolean; error?: string } = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error ?? "連線失敗");
+      }
+      setTest({ status: "ok" });
+    } catch (e) {
+      const status = (e as { status?: number })?.status;
+      const msg = status
+        ? friendlyAIError(e)
+        : e instanceof Error
+          ? e.message
+          : "連線失敗";
+      setTest({ status: "error", message: msg });
+    }
+  }
 
   function applyPreset(presetId: string) {
     if (presetId === "custom") {
@@ -65,21 +127,9 @@ export function SettingsDialog({
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    let headers: Record<string, string> | undefined;
-    if (headersText.trim()) {
-      try {
-        const parsed = JSON.parse(headersText);
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          throw new Error("not an object");
-        }
-        headers = parsed as Record<string, string>;
-      } catch {
-        setHeadersError("Headers 必須是合法 JSON 物件，例如 {\"X-Foo\": \"bar\"}");
-        return;
-      }
-    }
-    setHeadersError(null);
-    onSave({ ...s, headers });
+    const settings = buildSettingsForCall();
+    if (!settings) return;
+    onSave(settings);
   }
 
   return (
@@ -239,6 +289,23 @@ export function SettingsDialog({
             </label>
           </div>
         </details>
+
+        <div className="flex flex-wrap items-center gap-3 pt-2 text-sm">
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={test.status === "testing"}
+            className="px-4 py-2 rounded-full border border-zinc-300 dark:border-zinc-700 disabled:opacity-50"
+          >
+            {test.status === "testing" ? "測試中…" : "測試連線"}
+          </button>
+          {test.status === "ok" && (
+            <span className="text-green-600 dark:text-green-400">✓ 連線成功</span>
+          )}
+          {test.status === "error" && (
+            <span className="text-red-600 dark:text-red-400">✗ {test.message}</span>
+          )}
+        </div>
 
         <div className="flex gap-3 justify-between pt-2">
           <button
