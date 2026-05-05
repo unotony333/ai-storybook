@@ -63,6 +63,14 @@ export const PRESETS: ProviderPreset[] = [
     structuredOutput: "json_object",
   },
   {
+    id: "openrouter",
+    name: "OpenRouter",
+    baseURL: "https://openrouter.ai/api/v1",
+    defaultModel: "openai/gpt-4o-mini",
+    isLocal: false,
+    structuredOutput: "json_object",
+  },
+  {
     id: "ollama",
     name: "Ollama (本地)",
     baseURL: "http://localhost:11434/v1",
