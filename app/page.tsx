@@ -1,20 +1,32 @@
 // app/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OutlineForm } from "./components/OutlineForm";
 import { SettingsButton } from "./components/SettingsButton";
 import { generateStory } from "./lib/openai";
 import { friendlyAIError } from "./lib/ai-call";
 import { loadProvider } from "./lib/provider-storage";
-import { saveDraft } from "./lib/storage";
+import { loadDraft, saveDraft } from "./lib/storage";
 import { PromptLang, StoryPage } from "./lib/types";
 
 export default function Home() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [initialOutline, setInitialOutline] = useState("");
+  const [initialLang, setInitialLang] = useState<PromptLang>("zh");
+
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) {
+      setInitialOutline(draft.outline);
+      setInitialLang(draft.promptLang);
+    }
+    setHydrated(true);
+  }, []);
 
   async function handleSubmit(outline: string, promptLang: PromptLang) {
     setIsLoading(true);
@@ -57,11 +69,15 @@ export default function Home() {
               輸入一段大綱，自動生成 5 頁可編輯的繪本故事。
             </p>
           </header>
-          <OutlineForm
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-            errorMessage={error}
-          />
+          {hydrated && (
+            <OutlineForm
+              onSubmit={handleSubmit}
+              isLoading={isLoading}
+              errorMessage={error}
+              initialOutline={initialOutline}
+              initialLang={initialLang}
+            />
+          )}
         </div>
       </main>
     </>
