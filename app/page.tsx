@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { OutlineForm } from "./components/OutlineForm";
 import { SettingsButton } from "./components/SettingsButton";
 import { generateStory } from "./lib/openai";
+import { friendlyAIError } from "./lib/ai-call";
 import { loadProvider } from "./lib/provider-storage";
 import { saveDraft } from "./lib/storage";
 import { PromptLang, StoryPage } from "./lib/types";
@@ -68,6 +69,8 @@ export default function Home() {
 }
 
 function formatError(e: unknown, isLocal: boolean): string {
+  const status = (e as { status?: number })?.status;
+  if (status) return friendlyAIError(e);
   const msg = e instanceof Error ? e.message : "生成失敗";
   if (isLocal && /fetch|network|cors/i.test(msg)) {
     return `無法連線到本地模型：${msg}。請確認服務已啟動且允許跨網域。`;

@@ -1,6 +1,7 @@
 // app/api/regenerate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { regeneratePage } from "@/app/lib/openai";
+import { friendlyAIError } from "@/app/lib/ai-call";
 import {
   MAX_OUTLINE_LENGTH,
   PAGE_COUNT,
@@ -85,10 +86,9 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ page });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "未知錯誤";
-    console.error("[/api/regenerate]", message);
+    console.error("[/api/regenerate]", e);
     return NextResponse.json(
-      { error: `AI 服務暫時無法使用：${message}` },
+      { error: friendlyAIError(e) },
       { status: 500 },
     );
   }

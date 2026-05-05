@@ -82,6 +82,24 @@ function buildResponseFormat(
   return undefined;
 }
 
+export function friendlyAIError(e: unknown): string {
+  const status = (e as { status?: number })?.status;
+  const baseMsg = e instanceof Error ? e.message : "未知錯誤";
+  if (status === 429) {
+    return "額度或速率限制 (429)：請稍後再試，或在右上角改用其他 AI 供應商。";
+  }
+  if (status === 401) {
+    return "API Key 無效或未授權 (401)：請在右上角設定檢查 key。";
+  }
+  if (status === 403) {
+    return "權限不足 (403)：API Key 沒有存取此模型的權限。";
+  }
+  if (status === 404) {
+    return "找不到模型或端點 (404)：請確認 Base URL 與模型名稱正確。";
+  }
+  return baseMsg;
+}
+
 export function extractJSON(raw: string): string {
   let s = raw.trim();
   // Strip ```json ... ``` or ``` ... ``` fences if present

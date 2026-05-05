@@ -7,6 +7,7 @@ import { StoryPageCard } from "@/app/components/StoryPageCard";
 import { RegenerateDialog } from "@/app/components/RegenerateDialog";
 import { SettingsButton } from "@/app/components/SettingsButton";
 import { regeneratePage } from "@/app/lib/openai";
+import { friendlyAIError } from "@/app/lib/ai-call";
 import { loadProvider } from "@/app/lib/provider-storage";
 import {
   clearDraft,
@@ -160,6 +161,8 @@ export default function StoryPage() {
 }
 
 function formatError(e: unknown, isLocal: boolean): string {
+  const status = (e as { status?: number })?.status;
+  if (status) return friendlyAIError(e);
   const msg = e instanceof Error ? e.message : "重新生成失敗";
   if (isLocal && /fetch|network|cors/i.test(msg)) {
     return `無法連線到本地模型：${msg}。請確認服務已啟動且允許跨網域。`;

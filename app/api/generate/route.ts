@@ -1,6 +1,7 @@
 // app/api/generate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { generateStory } from "@/app/lib/openai";
+import { friendlyAIError } from "@/app/lib/ai-call";
 import { MAX_OUTLINE_LENGTH, type PromptLang } from "@/app/lib/types";
 import { type ProviderSettings } from "@/app/lib/provider";
 import { getDefaultProvider } from "@/app/lib/provider-server";
@@ -54,10 +55,9 @@ export async function POST(req: NextRequest) {
     const pages = await generateStory(provider, outline, promptLang);
     return NextResponse.json({ pages });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "未知錯誤";
-    console.error("[/api/generate]", message);
+    console.error("[/api/generate]", e);
     return NextResponse.json(
-      { error: `AI 服務暫時無法使用：${message}` },
+      { error: friendlyAIError(e) },
       { status: 500 },
     );
   }
