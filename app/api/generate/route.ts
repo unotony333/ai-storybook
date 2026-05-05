@@ -1,10 +1,18 @@
 // app/api/generate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { generateStory } from "@/app/lib/openai";
-import { MAX_OUTLINE_LENGTH, PromptLang } from "@/app/lib/types";
+import { MAX_OUTLINE_LENGTH, type PromptLang } from "@/app/lib/types";
+import { type ProviderSettings } from "@/app/lib/provider";
+import { getDefaultProvider } from "@/app/lib/provider-server";
+
+interface Body {
+  outline?: string;
+  promptLang?: PromptLang;
+  provider?: ProviderSettings;
+}
 
 export async function POST(req: NextRequest) {
-  let body: { outline?: string; promptLang?: PromptLang };
+  let body: Body;
   try {
     body = await req.json();
   } catch {
@@ -27,8 +35,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "promptLang 不正確" }, { status: 400 });
   }
 
+  if (body.provider?.isLocal) {
+    return NextResponse.json(
+      { error: "本地模型請從前端直連" },
+      { status: 400 },
+    );
+  }
+
+  const provider = body.provider ?? getDefaultProvider();
+  if (!provider) {
+    return NextResponse.json(
+      { error: "請點右上角設定 AI 供應商" },
+      { status: 503 },
+    );
+  }
+
   try {
-    const pages = await generateStory(outline, promptLang);
+    const pages = await generateStory(provider, outline, promptLang);
     return NextResponse.json({ pages });
   } catch (e) {
     const message = e instanceof Error ? e.message : "未知錯誤";
