@@ -3,15 +3,15 @@ import "server-only";
 import { ProviderSettings } from "./provider";
 
 export function getDefaultProvider(): ProviderSettings | null {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return null;
   return {
-    id: "openai",
-    name: "OpenAI",
-    baseURL: "https://api.openai.com/v1",
+    id: "openrouter",
+    name: "OpenRouter",
+    baseURL: "https://openrouter.ai/api/v1",
     apiKey,
-    model: "gpt-4o-mini",
+    model: "openai/gpt-4o-mini",
     isLocal: false,
-    structuredOutput: "json_schema",
+    structuredOutput: "json_object",
   };
 }
