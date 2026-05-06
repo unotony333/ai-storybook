@@ -21,18 +21,59 @@ interface OpenRouterModel {
 let cached: ProviderSettings | null = null;
 let inFlight: Promise<ProviderSettings | null> | null = null;
 
-async function pickFreeModel(): Promise<string | null> {
+async function pingModel(apiKey: string, modelId: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: modelId,
+          messages: [{ role: "user", content: "ok" }],
+          max_tokens: 1,
+        }),
+        signal: controller.signal,
+      },
+    );
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function pickFreeModel(apiKey: string): Promise<string | null> {
   const res = await fetch("https://openrouter.ai/api/v1/models");
   if (!res.ok) return null;
   const data = (await res.json()) as { data: OpenRouterModel[] };
   const free = data.data.filter(
     (m) => m.pricing?.prompt === "0" && m.pricing?.completion === "0",
   );
-  const ids = new Set(free.map((m) => m.id));
-  for (const candidate of PREFERRED_FREE_MODELS) {
-    if (ids.has(candidate)) return candidate;
+  const freeIds = new Set(free.map((m) => m.id));
+
+  const ordered: string[] = [];
+  for (const c of PREFERRED_FREE_MODELS) {
+    if (freeIds.has(c)) ordered.push(c);
   }
-  return free[0]?.id ?? null;
+  for (const m of free) {
+    if (!ordered.includes(m.id) && ordered.length < 8) ordered.push(m.id);
+  }
+  if (ordered.length === 0) return null;
+
+  const results = await Promise.all(
+    ordered.map(async (id) => ({ id, ok: await pingModel(apiKey, id) })),
+  );
+  for (const r of results) {
+    if (!r.ok) console.log(`[provider-server] ${r.id} unavailable`);
+  }
+  return results.find((r) => r.ok)?.id ?? null;
 }
 
 export async function getDefaultProvider(): Promise<ProviderSettings | null> {
@@ -49,7 +90,7 @@ export async function getDefaultProvider(): Promise<ProviderSettings | null> {
   if (inFlight) return inFlight;
   inFlight = (async () => {
     try {
-      const model = await pickFreeModel();
+      const model = await pickFreeModel(apiKey);
       if (!model) return null;
       console.log(`[provider-server] selected default model: ${model}`);
       cached = buildProvider(apiKey, model);
