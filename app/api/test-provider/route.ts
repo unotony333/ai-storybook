@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const provider = body.provider ?? getDefaultProvider();
+  const provider = body.provider ?? (await getDefaultProvider());
   if (!provider) {
     return NextResponse.json(
       { error: "沒有可測試的 provider" },
