@@ -33,7 +33,14 @@ export async function callAI<T>(opts: CallAIOptions): Promise<T> {
     ...(responseFormat ? { response_format: responseFormat } : {}),
   });
 
-  const raw = completion.choices[0]?.message?.content;
+  const message = completion.choices[0]?.message as
+    | { content?: string | null; reasoning_content?: string | null; reasoning?: string | null }
+    | undefined;
+  const raw =
+    (message?.content && message.content.length > 0 ? message.content : null) ??
+    message?.reasoning_content ??
+    message?.reasoning ??
+    null;
   if (!raw) throw new Error("AI 回傳空內容");
   const cleaned = extractJSON(raw);
   try {
