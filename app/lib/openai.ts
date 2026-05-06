@@ -26,7 +26,7 @@ export async function generateStory(
   outline: string,
   lang: PromptLang,
 ): Promise<StoryPage[]> {
-  const result = await callAI<{ pages: StoryPage[] }>({
+  const result = await callAI<{ pages: Partial<StoryPage>[] }>({
     provider,
     systemPrompt: SYSTEM_BASE(lang),
     userMessage: outline,
@@ -34,7 +34,15 @@ export async function generateStory(
     schema: storySchema.schema,
     schemaDescription: STORY_SCHEMA_DESC,
   });
-  return result.pages;
+  const pages = Array.isArray(result.pages) ? result.pages : [];
+  if (pages.length !== 5) {
+    throw new Error(`AI 回傳 ${pages.length} 頁而非 5 頁，請改用其他模型或結構化模式`);
+  }
+  return pages.map((p, i) => ({
+    pageNumber: i + 1,
+    text: typeof p.text === "string" ? p.text : "",
+    imagePrompt: typeof p.imagePrompt === "string" ? p.imagePrompt : "",
+  }));
 }
 
 export interface RegenerateArgs {
@@ -63,7 +71,7 @@ export async function regeneratePage(args: RegenerateArgs): Promise<StoryPage> {
     userHint: userHint ?? null,
   });
 
-  const result = await callAI<{ page: StoryPage }>({
+  const result = await callAI<{ page?: Partial<StoryPage> }>({
     provider,
     systemPrompt: system,
     userMessage,
@@ -72,8 +80,10 @@ export async function regeneratePage(args: RegenerateArgs): Promise<StoryPage> {
     schemaDescription: PAGE_SCHEMA_DESC,
   });
 
-  if (result.page.pageNumber !== pageNumber) {
-    result.page.pageNumber = pageNumber;
-  }
-  return result.page;
+  const p = result.page ?? {};
+  return {
+    pageNumber,
+    text: typeof p.text === "string" ? p.text : "",
+    imagePrompt: typeof p.imagePrompt === "string" ? p.imagePrompt : "",
+  };
 }
