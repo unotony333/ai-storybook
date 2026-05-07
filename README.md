@@ -5,7 +5,7 @@
 
 ## Demo
 
-https://ai-storybook-git-main-unotony333s-projects.vercel.app/
+https://ai-storybook-sand.vercel.app/
 
 ## 特色
 
